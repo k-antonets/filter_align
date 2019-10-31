@@ -25,10 +25,10 @@ func IsEmpty(r *fastx.Record, f float64) bool {
 	return sf > f
 }
 
-func CheckFile(filename string, e int, f float64) (bool, error) {
+func CheckFile(filename string, e int, f float64) (bool, int, error) {
 	reader, err := fastx.NewReader(seq.DNAredundant, filename, "")
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 	defer reader.Close()
 
@@ -40,7 +40,7 @@ func CheckFile(filename string, e int, f float64) (bool, error) {
 			break
 		}
 		if err != nil {
-			return false, err
+			return false, 0, err
 		}
 
 		if IsEmpty(r, f) {
@@ -48,7 +48,7 @@ func CheckFile(filename string, e int, f float64) (bool, error) {
 		}
 	}
 
-	return empty < e, nil
+	return empty <= e, empty, nil
 }
 
 func CopyFiles(src, dst string) (int64, error) {
@@ -88,19 +88,19 @@ func main() {
 		filename := file.Name()
 		abspath := path.Join(*indir, filename)
 
-		check, err := CheckFile(abspath, *empty, *threshold)
+		check, em, err := CheckFile(abspath, *empty, *threshold)
 		if err != nil {
 			panic(err)
 		}
 
 		if check {
-			fmt.Printf("File %s: PASS\n", filename)
+			fmt.Printf("File %s: PASS; %d sequences\n", filename, em)
 			newname := path.Join(*outdir, filename)
 			if _, err := CopyFiles(abspath, newname); err != nil {
 				panic(err)
 			}
 		} else {
-			fmt.Printf("File %s: FAIL\n", filename)
+			fmt.Printf("File %s: FAIL; %d sequences\n", filename, em)
 			newname := path.Join(*outdir, "_"+filename)
 			if _, err := CopyFiles(abspath, newname); err != nil {
 				panic(err)
